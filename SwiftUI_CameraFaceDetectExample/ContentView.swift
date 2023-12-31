@@ -8,6 +8,7 @@
 import SwiftUI
 import AVFoundation
 import Vision
+import Observation
 
 // 顔認識のための構造体
 struct FaceDetection {
@@ -22,26 +23,20 @@ struct ContentView: View {
 }
 
 struct CameraView: View {
-    @StateObject private var cameraViewModel = CameraViewModel()
+    private var cameraViewModel = CameraViewModel()
     
     var body: some View {
         ZStack {
-            if let previewLayer = cameraViewModel.previewLayer {
-                PreviewLayerView(previewLayer: previewLayer)
-                    .edgesIgnoringSafeArea(.all)
-            } else {
-                ProgressView()
-            }
             if let previewImage = cameraViewModel.previewImage {
                 Image(uiImage: previewImage)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    //.aspectRatio(contentMode: .fit)
+                    //.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ProgressView()
             }
- 
         }
+        .edgesIgnoringSafeArea(.all)
         .onAppear {
             cameraViewModel.startCaptureSession()
         }
@@ -51,27 +46,12 @@ struct CameraView: View {
     }
 }
 
-struct PreviewLayerView: UIViewRepresentable {
-    let previewLayer: AVCaptureVideoPreviewLayer
-    
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: UIScreen.main.bounds)
-        previewLayer.frame = view.bounds
-        view.layer.addSublayer(previewLayer)
-        return view
-    }
-    
-    func updateUIView(_ uiView: UIView, context: Context) {
-        previewLayer.frame = uiView.bounds
-    }
-}
-
-class CameraViewModel: NSObject, ObservableObject {
+@Observable
+class CameraViewModel: NSObject {
     private let session = AVCaptureSession()
     private var videoOutput: AVCaptureVideoDataOutput?
     
-    @Published var previewLayer: AVCaptureVideoPreviewLayer?
-    @Published var previewImage: UIImage?
+    var previewImage: UIImage?
     
     private let faceDetectionRequest = VNDetectFaceLandmarksRequest()
 
@@ -82,7 +62,7 @@ class CameraViewModel: NSObject, ObservableObject {
     }
     
     func startCaptureSession() {
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .background).async {
             self.session.startRunning()
         }
     }
@@ -111,10 +91,6 @@ class CameraViewModel: NSObject, ObservableObject {
             session.addOutput(videoOutput)
             self.videoOutput = videoOutput
         }
-        
-        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-        previewLayer.videoGravity = .resizeAspectFill
-        self.previewLayer = previewLayer
     }
     
     // 顔認識処理を行うメソッド
